@@ -19,3 +19,6 @@
 
 (defn target-spec [config]
   (:target-spec config))
+
+(defn table-spec [config]
+  (:table-name config))

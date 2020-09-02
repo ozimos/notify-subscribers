@@ -22,7 +22,7 @@
 (defn gen-message [result]
   (format "Dear Customer, your extracredit loan of %s is now more than 72hours. Kindly recharge your account to repay your loans." (:amount result)))
 
-(defn publish-message [{:keys [queue exchange ch]} message]
-  (lb/publish ch exchange queue message
+(defn publish-message [{:keys [routing-key exchange ch]} message]
+  (lb/publish ch exchange routing-key message
               {:content-type "application/octet-stream'"
                :priority 0 :delivery-mode 2 :persistent true}))

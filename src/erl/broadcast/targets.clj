@@ -1,17 +1,17 @@
 (ns erl.broadcast.targets
   (:require [erl.broadcast.config :as config]))
 
-(defmulti get-query (fn [op] op))
+(defmulti get-query (fn [op _] op))
 
-(defmethod get-query :last72hours [_]
+(defmethod get-query :last72hours [_ _]
   ["select msisdn, amount from public.tbl_loan_request 
         where repay_time is null and status = 'success' and 
         timestamp between '2020-07-02 00:00:00.000000'::timestamp 
         and current_timestamp - interval '72 hour'"])
 
-(defmethod get-query :inactive-subscribers [_]
-  ["select * from public.tbl_glo_bmc_inactive_subs_aug2020
-         where amount_loanable = ?" (or (System/getProperty "denom.band") 500)])
+(defmethod get-query :inactive-subscribers [_ table-name]
+  [(str "select * from " table-name
+         " where amount_loanable = ?") (or (System/getProperty "denom.band") 200)])
 
 (defmulti get-message (fn [op _] op))
 
@@ -24,7 +24,7 @@
    (:amount result)))
 
 (defn config-query [config]
-  (get-query (config/target-spec config)))
+  (get-query (config/target-spec config) (config/table-spec config)))
 
 (defn config-message [config result]
   (get-message (config/target-spec config) result))

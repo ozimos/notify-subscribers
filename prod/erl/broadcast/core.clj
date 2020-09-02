@@ -8,10 +8,11 @@
    [integrant.core :as ig]
    [clojure.java.io :as io]))
 
-(def config
+(defn get-config []
   (ig/read-string (slurp (io/resource "system.edn"))))
 
 (defn -main []
-  (ig/load-namespaces config)
-  (send-over-channel (ig/init config)))
+  (let [config (get-config)] 
+    (ig/load-namespaces  config)
+    (send-over-channel (ig/init config))))
 

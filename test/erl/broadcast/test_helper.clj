@@ -1,11 +1,6 @@
 (ns erl.broadcast.test-helper
-  (:require [erl.broadcast.authentication :as auth]
-            [erl.broadcast.db :as db]
-            [next.jdbc :as jdbc]
-            [integrant.core :as ig]
-            [clojure.java.io :as io]
-            [clojure.string :as str]
-            [erl.broadcast.type.user :as user]))
+  (:require [integrant.core :as ig]
+            [clojure.java.io :as io]))
 
 (def system nil)
 
@@ -30,27 +25,3 @@
     (ig/halt! system)
     (alter-var-root #'system (constantly nil))))
 
-(def ^:private tables
-  [:user])
-
-(defn- double-quote [s]
-  (format "\"%s\"" s))
-
-(def ^:private truncate-all-tables
-  "SQL vector that truncates all tables"
-  [(str "TRUNCATE "
-        (str/join " " (mapv (comp double-quote name) tables))
-        " CASCADE")])
-
-(defn truncate-after
-  "Test fixtures that truncates all database tables after running the
-  test. Assumes the `use-system` fixture has started the database
-  connection pool."
-  [test-fn]
-  (test-fn)
-  (jdbc/execute-one! (::db/pool system) truncate-all-tables))
-
-(defn authenticate-with
-  "Adds authentication claims to `env` for the given user."
-  [env {::user/keys [auth0-id]}]
-  (assoc-in env [:ring/request ::auth/claims :sub] auth0-id))
