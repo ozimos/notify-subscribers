@@ -1,0 +1,8 @@
+{:erl.broadcast.config/config
+ {:erl.broadcast.config/profile :prod}
+
+ :erl.broadcast.db/pool
+ {:erl.broadcast.config/config #ig/ref :erl.broadcast.config/config}
+
+ :erl.broadcast.rmq/rabbit
+ {:erl.broadcast.config/config #ig/ref :erl.broadcast.config/config}}

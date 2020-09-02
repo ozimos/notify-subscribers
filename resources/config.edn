@@ -1,0 +1,15 @@
+{:database-spec {:username      #or [#env POSTGRES_USER "postgres"]
+                 :password      #or [#env POSTGRES_PASSWORD "password"]
+                 :server-name   #or [#env POSTGRES_HOSTNAME "localhost"]
+                 :port-number   #long #profile {:dev  5432
+                                                :test 5432
+                                                :prod #env POSTGRES_PORT}
+                 :database-name #or [#env POSTGRES_DB "postgres"]
+                 :sslmode       #or [#env POSTGRES_SSLMODE "disable"]}
+ :rabbit-spec {:uri #or [#env AMPQ_URI "amqp://guest:guest@10.100.96.63:5672/%2F?connection_attempts=3&heartbeat=3600"]
+               :queue #or [#env AMPQ_QUEUE "queue-sms"]
+               :exchange #or [#env AMPQ_EXCHANGE "xchg-as-sms"]}
+ :send-spec {:chan-buffer         #long #or [#env CHAN_BUFFER 2000]
+             :pause-count #long #or [#env PAUSE_COUNT 10000]
+             :pause-time #long #or [#env PAUSE_TIME 1000]}
+ :target-spec #keyword #or [#env TARGET "last72hours"]}

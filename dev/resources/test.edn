@@ -1,0 +1,1 @@
+{:erl.broadcast.config/config {:erl.broadcast.config/profile :test}}
