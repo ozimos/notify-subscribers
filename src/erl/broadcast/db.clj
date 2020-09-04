@@ -1,31 +1,14 @@
 (ns erl.broadcast.db
   (:require [erl.broadcast.config :as config]
             [integrant.core :as ig]
-            [hikari-cp.core :as pool]
+            [next.jdbc :as jdbc]
             [next.jdbc.result-set :as result-set]
             [next.jdbc.prepare :as p]))
 
-(defn datasource-options [database-spec]
-  (merge {:auto-commit        true
-          :read-only          false
-          :connection-timeout 30000
-          :validation-timeout 5000
-          :idle-timeout       600000
-          :max-lifetime       1800000
-          :minimum-idle       10
-          :maximum-pool-size  10
-          :pool-name          "db-pool"
-          :adapter            "postgresql"
-          :register-mbeans    false}
-         database-spec))
 
-(defmethod ig/init-key ::pool
+(defmethod ig/init-key ::ds
   [_ {::config/keys [config]}]
-  (pool/make-datasource (datasource-options (config/database-spec config))))
-
-(defmethod ig/halt-key! ::pool
-  [_ pool]
-  (pool/close-datasource pool))
+  (jdbc/get-datasource (config/database-spec config)))
 
 (extend-protocol result-set/ReadableColumn
 

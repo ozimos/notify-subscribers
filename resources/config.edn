@@ -1,11 +1,11 @@
-{:database-spec {:username      #or [#env POSTGRES_USER "postgres"]
-                 :password      #or [#env POSTGRES_PASSWORD ""]
-                 :server-name   #or [#env POSTGRES_HOSTNAME "localhost"]
-                 :port-number   #long #profile {:dev  5432
+{:database-spec {:user      #or [#env POSTGRES_USER "postgres"]
+                 :password      #or [#env POSTGRES_PASSWORD]
+                 :host   #or [#env POSTGRES_HOSTNAME]
+                 :port   #long #profile {:dev  5432
                                                 :test 5432
                                                 :prod #or [#env POSTGRES_PORT 5432]}
-                 :database-name #or [#env POSTGRES_DB "postgres"]
-                 :sslmode       #or [#env POSTGRES_SSLMODE "disable"]}
+                 :dbtype "postgresql"
+                 :dbname #or [#env POSTGRES_DB "postgres"]}
  :rabbit-spec {:uri #or [#env AMPQ_URI "amqp://guest:guest@10.100.96.63:5672/%2F?connection_attempts=3&heartbeat=3600"]
                :queue #or [#env AMPQ_QUEUE "queue-sms"]
                :routing-key #or [#env AMPQ_RKEY "sms"]

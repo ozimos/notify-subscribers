@@ -6,39 +6,47 @@
             [erl.broadcast.targets :as target]
             [langohr.confirm   :as lcf]
             [taoensso.timbre :as timbre :refer [info]]
-            [clojure.core.async :as async :refer [chan go <! >!! timeout thread]]))
+            [clojure.core.async :as async :refer [chan <!! >!! timeout thread]]))
 
-(def db-counter (atom 0))
+(def loop-counter (atom 0))
+(def resume-status (atom false))
+(def sending-status (atom true))
 
 (defn publisher [config {:keys [ch] :as rabbit} async-chan]
-  (go
-    (let [{:keys [pause-count pause-time]} (config/send-spec config)]
-      (while true
-        (while (< 0 (mod @db-counter pause-count))
-          (swap! db-counter inc)
-          (rmq/publish-message rabbit (<! async-chan)))
-        (info "No of messages sent: " @db-counter)
-        (lcf/wait-for-confirms ch)
-        (info "All confirms arrived...")
-        (<! (timeout pause-time))))))
 
-(defn recipients-from-db [config pool async-chan]
+  (let [{:keys [pause-count pause-time]} (config/send-spec config)]
+    (while @sending-status
+      (while (or (< 0 (mod @loop-counter pause-count)) (= 0 @loop-counter) @resume-status)
+        (swap! loop-counter inc)
+        (swap! resume-status (constantly false))
+        (rmq/publish-message rabbit (<!! async-chan)))
+      (swap! resume-status (constantly true))
+      (info "No of messages sent: " @loop-counter)
+      (lcf/wait-for-confirms ch)
+      (info "All confirms arrived...")
+      (<!! (timeout pause-time)))
+    (info "Exiting publisher")))
+
+(defn recipients-from-db [config ds async-chan]
   (thread
     (transduce
      (map (fn [result] (>!! async-chan (target/config-message config result)) 1))
      +
      0
-     (jdbc/plan pool
-                (target/config-query config)))))
+     (jdbc/plan ds
+                (target/config-query config)))
+    (info "done with db fetch")
+    (swap! sending-status (constantly false))))
 
 (defn send-over-channel
-  [{::db/keys [pool]
+  [{::db/keys [ds]
     ::config/keys [config]
     ::rmq/keys [rabbit]}]
   (let [{:keys [chan-buffer]} (config/send-spec config)
         c (chan chan-buffer)]
+    (recipients-from-db config ds c)
     (publisher config rabbit c)
-    (recipients-from-db config pool c)))
+    (info "All done!! Exiting send-over-channel")))
 
 
 (comment

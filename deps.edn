@@ -3,13 +3,13 @@
            integrant                 {:mvn/version "0.8.0"}
            seancorfield/next.jdbc    {:mvn/version "1.1.582"}
            org.clojure/core.async              {:mvn/version "1.2.603"}
+           metosin/jsonista {:mvn/version "0.2.7"}
            ch.qos.logback/logback-classic {:mvn/version "1.2.3"}
            org.postgresql/postgresql {:mvn/version "42.2.16"}
            com.novemberain/langohr {:mvn/version "5.2.0"}
-           hikari-cp                 {:mvn/version "2.13.0"}
            aero                      {:mvn/version "1.1.6"}}
  :aliases {:dev       {:extra-paths ["dev"]
-                       :jvm-opts    ["-Dtrace"]
+                       :jvm-opts    ["-Dtrace" "-Ddenom.band=100"]
                        :extra-deps  {org.clojure/tools.namespace         {:mvn/version "1.0.0"}
                                      clj-commons/pushy                   {:mvn/version "0.3.10"}
                                      binaryage/devtools                  {:mvn/version "1.0.0"}
