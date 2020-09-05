@@ -6,22 +6,60 @@
             [erl.broadcast.targets :as target]
             [langohr.confirm   :as lcf]
             [taoensso.timbre :as timbre :refer [info]]
-            [clojure.core.async :as async :refer [chan <!! >!! timeout thread]]))
+            [clojure.core.async :as async :refer [chan <!! >!! timeout thread close!]]))
 
-(def loop-counter (atom 0))
-(def resume-status (atom false))
-(def sending-status (atom true))
+(defn publisher2 [config {:keys [ch] :as rabbit} async-chan]
+
+  (let [{:keys [pause-count pause-time]} (config/send-spec config)]
+    (async/transduce
+     (map (fn [message] (rmq/publish-message rabbit message) 1))
+     (completing (fn [x y]
+                   (info "No of messages sent: ")
+                   (when (< 0 (mod (inc x) pause-count))
+                     (lcf/wait-for-confirms ch)
+                     (info "All confirms arrived...")
+                     (<!! (timeout pause-time)))
+                   (+ x y)))
+     0
+     async-chan)
+
+    (info "Exiting publisher")))
+
+
+(defn publish-batch [current-count pause-time bound-chan rabbit ch]
+  (let [counter  (async/transduce
+                  (map (fn [message] (rmq/publish-message rabbit message) 1))
+                  +
+                  current-count
+                  bound-chan)]
+    (info "No of messages sent: " counter)
+    (lcf/wait-for-confirms ch)
+    (info "All confirms arrived...")
+    (<!! (timeout pause-time))
+    counter))
 
 (defn publisher [config {:keys [ch] :as rabbit} async-chan]
 
   (let [{:keys [pause-count pause-time]} (config/send-spec config)]
+    (loop [bound-chan (async/take pause-count async-chan) initial-count 0]
+      (let [current-count  (publish-batch initial-count pause-time bound-chan rabbit ch)
+            next-chan (async/take pause-count async-chan)]
+        (when-some [message (<!! next-chan)]
+          (rmq/publish-message rabbit message)
+          (recur  next-chan (inc current-count)))))
+    (info "Exiting publisher")))
+
+(defn publisher3 [config {:keys [ch] :as rabbit} async-chan]
+
+  (let [{:keys [pause-count pause-time]} (config/send-spec config)]
     (while @sending-status
-      (while (or (< 0 (mod @loop-counter pause-count)) (= 0 @loop-counter) @resume-status)
-        (swap! loop-counter inc)
-        (swap! resume-status (constantly false))
-        (rmq/publish-message rabbit (<!! async-chan)))
-      (swap! resume-status (constantly true))
-      (info "No of messages sent: " @loop-counter)
+      (->> (async/transduce
+            (map (fn [message] (rmq/publish-message rabbit message) 1))
+            +
+            0
+            (async/take pause-count async-chan))
+           (swap! loop-counter +)
+           (info "No of messages sent: "))
       (lcf/wait-for-confirms ch)
       (info "All confirms arrived...")
       (<!! (timeout pause-time)))
@@ -36,7 +74,7 @@
      (jdbc/plan ds
                 (target/config-query config)))
     (info "done with db fetch")
-    (swap! sending-status (constantly false))))
+    (close! async-chan)))
 
 (defn send-over-channel
   [{::db/keys [ds]
@@ -50,6 +88,46 @@
 
 
 (comment
+  (def c (chan 6))
+  (defn publish-batch2 [pause-count pause-time async-chan]
+    (->> (async/transduce
+          (map (fn [_]  1))
+          +
+          0
+          (async/take pause-count async-chan))
+         (swap! loop-counter +)
+         (info "No of messages sent: "))
+    (<!! (timeout pause-time)))
+
+  (defn publish-batch3 [pause-count async-chan]
+    (async/transduce
+     (map (fn [_]  1))
+     +
+     0
+     (async/take pause-count async-chan)))
+
+  (defn skipping [async-chan]
+    (async/transduce
+     (partition-all 5)
+     (completing (fn [x y] (->> (interleave x y) (partition 2) (map #(apply + %)))))
+     (take 5 (repeat 0))
+     async-chan))
+
+  (transduce
+   (partition-all 5)
+   (completing (fn [x y] (->> (interleave x y) (partition 2) (map #(apply + %)))))
+   (take 5 (repeat 0))
+   (range 100))
+
+  (def skipped (async/go
+                 (async/<! (skipping c))))
+  (def bchan (async/take 5 c))
+  (>!! c (rand-int 8))
+  (<!! bchan)
+  (async/close! c)
+  (async/onto-chan c (range 100))
+  skipped
+  (<!! skipped)
   (def db {:dbtype "postgresql" :dbname "erlcsdplive"})
   (def ds (jdbc/get-datasource db))
 
