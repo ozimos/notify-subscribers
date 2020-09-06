@@ -8,29 +8,25 @@
             [taoensso.timbre :as timbre :refer [info]]
             [clojure.core.async :as async :refer [chan <!! >!! timeout thread close!]]))
 
-
-(defn publish-batch [current-count pause-time bound-chan rabbit ch]
-  (let [counter  (loop [loop-count current-count]
-                   (if-some [message (<!! bound-chan)]
-                     (do
-                       (rmq/publish-message rabbit message)
-                       (recur  (inc loop-count)))
-                     loop-count))]
-    (info "No of messages sent: " counter)
-    (lcf/wait-for-confirms ch)
-    (info "All confirms arrived...")
-    (<!! (timeout pause-time))
-    counter))
+(defn publish-batch [current-count pause-count async-chan rabbit]
+  (<!! (async/transduce
+        (map (fn [message] (rmq/publish-message rabbit message) 1))
+        +
+        current-count
+        (async/take pause-count async-chan))))
 
 (defn publisher [config {:keys [ch] :as rabbit} async-chan]
 
   (let [{:keys [pause-count pause-time]} (config/send-spec config)]
-    (loop [bound-chan (async/take pause-count async-chan) initial-count 0]
-      (let [current-count  (publish-batch initial-count pause-time bound-chan rabbit ch)
-            next-chan (async/take pause-count async-chan)]
-        (when-some [message (<!! next-chan)]
+    (loop [dispatched-count 0]
+      (let [current-count (publish-batch dispatched-count pause-count async-chan rabbit)]
+        (info "No of messages sent: " current-count)
+        (lcf/wait-for-confirms ch)
+        (info "All confirms arrived...")
+        (<!! (timeout pause-time))
+        (when-some [message (<!! async-chan)]
           (rmq/publish-message rabbit message)
-          (recur  next-chan (inc current-count)))))
+          (recur (inc current-count)))))
     (info "Exiting publisher")))
 
 
