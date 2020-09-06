@@ -8,30 +8,14 @@
             [taoensso.timbre :as timbre :refer [info]]
             [clojure.core.async :as async :refer [chan <!! >!! timeout thread close!]]))
 
-(defn publisher2 [config {:keys [ch] :as rabbit} async-chan]
-
-  (let [{:keys [pause-count pause-time]} (config/send-spec config)]
-    (async/transduce
-     (map (fn [message] (rmq/publish-message rabbit message) 1))
-     (completing (fn [x y]
-                   (info "No of messages sent: ")
-                   (when (< 0 (mod (inc x) pause-count))
-                     (lcf/wait-for-confirms ch)
-                     (info "All confirms arrived...")
-                     (<!! (timeout pause-time)))
-                   (+ x y)))
-     0
-     async-chan)
-
-    (info "Exiting publisher")))
-
 
 (defn publish-batch [current-count pause-time bound-chan rabbit ch]
-  (let [counter  (async/transduce
-                  (map (fn [message] (rmq/publish-message rabbit message) 1))
-                  +
-                  current-count
-                  bound-chan)]
+  (let [counter  (loop [loop-count current-count]
+                   (if-some [message (<!! bound-chan)]
+                     (do
+                       (rmq/publish-message rabbit message)
+                       (recur  (inc loop-count)))
+                     loop-count))]
     (info "No of messages sent: " counter)
     (lcf/wait-for-confirms ch)
     (info "All confirms arrived...")
@@ -49,21 +33,6 @@
           (recur  next-chan (inc current-count)))))
     (info "Exiting publisher")))
 
-(defn publisher3 [config {:keys [ch] :as rabbit} async-chan]
-
-  (let [{:keys [pause-count pause-time]} (config/send-spec config)]
-    (while @sending-status
-      (->> (async/transduce
-            (map (fn [message] (rmq/publish-message rabbit message) 1))
-            +
-            0
-            (async/take pause-count async-chan))
-           (swap! loop-counter +)
-           (info "No of messages sent: "))
-      (lcf/wait-for-confirms ch)
-      (info "All confirms arrived...")
-      (<!! (timeout pause-time)))
-    (info "Exiting publisher")))
 
 (defn recipients-from-db [config ds async-chan]
   (thread
@@ -88,46 +57,6 @@
 
 
 (comment
-  (def c (chan 6))
-  (defn publish-batch2 [pause-count pause-time async-chan]
-    (->> (async/transduce
-          (map (fn [_]  1))
-          +
-          0
-          (async/take pause-count async-chan))
-         (swap! loop-counter +)
-         (info "No of messages sent: "))
-    (<!! (timeout pause-time)))
-
-  (defn publish-batch3 [pause-count async-chan]
-    (async/transduce
-     (map (fn [_]  1))
-     +
-     0
-     (async/take pause-count async-chan)))
-
-  (defn skipping [async-chan]
-    (async/transduce
-     (partition-all 5)
-     (completing (fn [x y] (->> (interleave x y) (partition 2) (map #(apply + %)))))
-     (take 5 (repeat 0))
-     async-chan))
-
-  (transduce
-   (partition-all 5)
-   (completing (fn [x y] (->> (interleave x y) (partition 2) (map #(apply + %)))))
-   (take 5 (repeat 0))
-   (range 100))
-
-  (def skipped (async/go
-                 (async/<! (skipping c))))
-  (def bchan (async/take 5 c))
-  (>!! c (rand-int 8))
-  (<!! bchan)
-  (async/close! c)
-  (async/onto-chan c (range 100))
-  skipped
-  (<!! skipped)
   (def db {:dbtype "postgresql" :dbname "erlcsdplive"})
   (def ds (jdbc/get-datasource db))
 
