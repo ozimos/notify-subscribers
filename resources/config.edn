@@ -1,17 +1,26 @@
-{:database-spec {:user      #or [#env POSTGRES_USER "postgres"]
-                 :password      #or [#env POSTGRES_PASSWORD]
-                 :host   #or [#env POSTGRES_HOSTNAME]
-                 :port   #long #profile {:dev  5432
-                                                :test 5432
-                                                :prod #or [#env POSTGRES_PORT 5432]}
-                 :dbtype "postgresql"
-                 :dbname #or [#env POSTGRES_DB "postgres"]}
+{:database-spec #ref [#keyword #or [#env TARGET "new-adds"] :database-spec]
+ :failed-spec #ref [#keyword #or [#env TARGET "new-adds"] :failed-spec]
+ :messages #ref [#keyword #or [#env TARGET "new-adds"] :messages]
+ :is-kobo #ref [#keyword #or [#env TARGET "new-adds"] :is-kobo]
  :rabbit-spec {:uri #or [#env AMPQ_URI "amqp://guest:guest@10.100.96.63:5672/%2F?connection_attempts=3&heartbeat=3600"]
                :queue #or [#env AMPQ_QUEUE "queue-sms"]
                :routing-key #or [#env AMPQ_RKEY "sms"]
-               :exchange #or [#env AMPQ_EXCHANGE "xchg-as-sms"]}
+               :exchange #or [#env AMPQ_EXCHANGE "xchg-as-sms"]
+               :dl-exchange #or [#env AMPQ_DLX "xchg-sms-failedBC"]
+               :dl-queue #or [#env AMPQ_DLQ "queue-failedBC-sms"]
+               :dl-routing-key #or [#env AMPQ_DLRK "sms-failedBC"]
+               :dl-ttl #or [#env AMPQ_DLT 120000]}
  :send-spec {:chan-buffer         #long #or [#env CHAN_BUFFER 2000]
-             :pause-count #long #or [#env PAUSE_COUNT 10000]
-             :pause-time #long #or [#env PAUSE_TIME 1000]}
- :target-spec #keyword #or [#env TARGET "last72hours"]
- :table-name #or [#env TABLE "postgres"]}
+             :pause-count #long #or [#env PAUSE_COUNT 100000]
+             :confirm-time #long #or [#env CFM_TIME 2000]
+             :throttle-num #long #or [#env THROTTLE_NUM 40]
+             :throttle-intvl #keyword #or [#env THROTTLE_INTVL :second]
+             :sender #or [#env SENDER "Glo BoroMe"]
+             :confirms [8077364606, 8075555082, 7051215974, 8079147522]}
+ :persist-spec {:batch-size #long #or [#env BATCH_SIZE 1000]
+                :chan-batch-size #long #or [#env CHAN_BATCH_SIZE 2000]
+                :queue-timeout #long #or [#env QUEUE_TIMEOUT 5000]}
+ :target-spec #keyword #or [#env TARGET "new-adds"]
+ :inactive-subscribers #include  "inactive_subscribers.edn"
+ :new-adds #include  "new_adds.edn"
+ :last72hours #include  "last72hours.edn"}

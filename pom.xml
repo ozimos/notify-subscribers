@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
+  <packaging>jar</packaging>
   <groupId>broadcast</groupId>
   <artifactId>broadcast</artifactId>
   <version>0.1.0</version>
@@ -10,6 +11,11 @@
       <groupId>org.clojure</groupId>
       <artifactId>clojure</artifactId>
       <version>1.10.1</version>
+    </dependency>
+    <dependency>
+      <groupId>throttler</groupId>
+      <artifactId>throttler</artifactId>
+      <version>1.0.0</version>
     </dependency>
     <dependency>
       <groupId>org.postgresql</groupId>
@@ -32,24 +38,57 @@
       <version>1.1.582</version>
     </dependency>
     <dependency>
+      <groupId>org.clojure</groupId>
+      <artifactId>tools.deps.alpha</artifactId>
+      <version>0.9.782</version>
+    </dependency>
+    <dependency>
       <groupId>com.taoensso</groupId>
       <artifactId>timbre</artifactId>
       <version>4.10.0</version>
+      <exclusions>
+        <exclusion>
+          <groupId>com.fasterxml.jackson.core</groupId>
+          <artifactId>jackson-core</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
-      <groupId>hikari-cp</groupId>
-      <artifactId>hikari-cp</artifactId>
-      <version>2.13.0</version>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-nop</artifactId>
+      <version>1.7.25</version>
     </dependency>
     <dependency>
       <groupId>com.novemberain</groupId>
       <artifactId>langohr</artifactId>
       <version>5.2.0</version>
+      <exclusions>
+        <exclusion>
+          <groupId>com.fasterxml.jackson.core</groupId>
+          <artifactId>jackson-core</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>metosin</groupId>
+      <artifactId>jsonista</artifactId>
+      <version>0.2.7</version>
     </dependency>
     <dependency>
       <groupId>ch.qos.logback</groupId>
       <artifactId>logback-classic</artifactId>
       <version>1.2.3</version>
+    </dependency>
+    <dependency>
+      <groupId>camel-snake-kebab</groupId>
+      <artifactId>camel-snake-kebab</artifactId>
+      <version>0.4.1</version>
+      <exclusions>
+        <exclusion>
+          <groupId>com.fasterxml.jackson.core</groupId>
+          <artifactId>jackson-core</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.clojure</groupId>
@@ -58,9 +97,7 @@
     </dependency>
   </dependencies>
   <build>
-    <build>
-      <sourceDirectory>src</sourceDirectory>
-    </build>
+    <sourceDirectory>src</sourceDirectory>
   </build>
   <repositories>
     <repository>

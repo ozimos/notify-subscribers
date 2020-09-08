@@ -10,6 +10,10 @@
   [_ {::config/keys [config]}]
   (jdbc/get-datasource (config/database-spec config)))
 
+(defmethod ig/init-key ::fds
+  [_ {::config/keys [config]}]
+  (jdbc/get-datasource (config/failed-database-spec config)))
+
 (extend-protocol result-set/ReadableColumn
 
   ;; Automatically convert java.sql.Array into clojure vector in query

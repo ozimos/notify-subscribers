@@ -1,10 +1,12 @@
 resources/public/js
 resources/public/css
-node_modules
 .cpcache
-.shadow-cljs
 .nrepl-port
 .clj-kondo/.cache
 *.jar
 .calva/
 .envrc
+.env
+classes
+*.log
+.vscode

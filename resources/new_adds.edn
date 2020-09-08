@@ -1,0 +1,21 @@
+ {:database-spec {:user      #or [#env DB_USER "tozi"]
+                  :password      #or [#env DB_PASSWORD]
+                  :host   #or [#env DB_HOSTNAME]
+                  :table #or [#env DB_TABLENAME]
+                  :port   #long #profile {:dev  5432
+                                          :test 5432
+                                          :prod #or [#env DB_PORT]}
+                  :dbtype "postgresql"
+                  :dbname #or [#env DB_NAME]}
+  :messages ["Congratulations!!! You have been enabled to borrow N%s for calls"
+             "%s messages delivered for %s"]
+  :failed-spec {:user      #or [#env DB_FAIL_USER "tozi"]
+                :password      #or [#env DB_FAIL_PASSWORD]
+                :host   #or [#env DB_FAIL_HOSTNAME]
+                :table #or [#env DB_FAIL_TABLENAME]
+                :port   #long #profile {:dev  5432
+                                        :test 5432
+                                        :prod #or [#env DB_FAIL_PORT]}
+                :dbtype "postgresql"
+                :reWriteBatchedInserts true
+                :dbname #or [#env DB_FAIL_NAME]}}

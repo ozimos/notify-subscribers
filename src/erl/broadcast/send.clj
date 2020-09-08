@@ -1,54 +1,60 @@
 (ns erl.broadcast.send
-  (:require [erl.broadcast.db :as db]
-            [next.jdbc :as jdbc]
+  (:require [next.jdbc :as jdbc]
             [erl.broadcast.rmq :as rmq]
+            [langohr.core      :as lrmq]
             [erl.broadcast.config :as config]
             [erl.broadcast.targets :as target]
             [langohr.confirm   :as lcf]
-            [taoensso.timbre :as timbre :refer [info]]
-            [clojure.core.async :as async :refer [chan <!! >!! timeout thread close!]]))
+            [langohr.channel   :as lch]
+            [throttler.core :refer [throttle-chan]]
+            [taoensso.timbre :as timbre :refer [info log-errors]]
+            [clojure.core.async :as async :refer [chan <!! >!! thread close!]]))
 
-(defn publish-batch [current-count pause-count async-chan rabbit]
+(defn publish-batch [current-count pause-count async-chan ch rabbit]
   (<!! (async/transduce
-        (map (fn [message] (rmq/publish-message rabbit message) 1))
+        (map (fn [message] (rmq/publish-message ch rabbit message) 1))
         +
         current-count
         (async/take pause-count async-chan))))
 
-(defn publisher [config {:keys [ch] :as rabbit} async-chan]
+(defn publisher [config {:keys [conn] :as rabbit} async-chan]
 
-  (let [{:keys [pause-count pause-time]} (config/send-spec config)]
+  (let [{:keys [pause-count confirm-time]} (config/send-spec config)
+        ch    (doto (lch/open conn) (lcf/select))
+        confirms (target/send-ops {:config config :op :confirms})]
     (loop [dispatched-count 0]
-      (let [current-count (publish-batch dispatched-count pause-count async-chan rabbit)]
-        (info "No of messages sent: " current-count)
-        (lcf/wait-for-confirms ch)
-        (info "All confirms arrived...")
-        (<!! (timeout pause-time))
-        (when-some [message (<!! async-chan)]
-          (rmq/publish-message rabbit message)
-          (recur (inc current-count)))))
+      (let [current-count (publish-batch dispatched-count pause-count async-chan ch rabbit)]
+        (lcf/wait-for-confirms ch confirm-time)
+        (info "No of messages sent: " current-count " for Denom: " (System/getProperty "denom.band" "None"))
+        (doseq [message-fn confirms]
+          (rmq/publish-message ch rabbit (message-fn current-count)))
+        (if-some [message (<!! async-chan)]
+          (do (rmq/publish-message ch rabbit message)
+              (recur (inc current-count)))
+          (lrmq/close ch))))
     (info "Exiting publisher")))
-
 
 (defn recipients-from-db [config ds async-chan]
   (thread
     (transduce
-     (map (fn [result] (>!! async-chan (target/config-message config result)) 1))
+     (map (fn [result]
+            (when-let [message (log-errors 
+                           (target/send-ops {:config config :op :message} result))]
+              (>!! async-chan message)) 
+            1))
      +
      0
      (jdbc/plan ds
-                (target/config-query config)))
+                (target/send-ops {:config config :op :q-recipient})))
     (info "done with db fetch")
     (close! async-chan)))
 
 (defn send-over-channel
-  [{::db/keys [ds]
-    ::config/keys [config]
-    ::rmq/keys [rabbit]}]
-  (let [{:keys [chan-buffer]} (config/send-spec config)
+  [ds config rabbit]
+  (let [{:keys [chan-buffer throttle-num throttle-intvl]} (config/send-spec config)
         c (chan chan-buffer)]
     (recipients-from-db config ds c)
-    (publisher config rabbit c)
+    (publisher config rabbit (throttle-chan c throttle-num throttle-intvl))
     (info "All done!! Exiting send-over-channel")))
 
 

@@ -1,21 +1,27 @@
 {:paths   ["src" "resources"]
- :deps    {com.taoensso/timbre       {:mvn/version "4.10.0"}
-           integrant                 {:mvn/version "0.8.0"}
+ :deps    {metosin/jsonista {:mvn/version "0.2.7"}
+           com.taoensso/timbre       {:mvn/version "4.10.0" :exclusions [com.fasterxml.jackson.core/jackson-core]}
+           integrant/integrant                 {:mvn/version "0.8.0"}
            seancorfield/next.jdbc    {:mvn/version "1.1.582"}
            org.clojure/core.async              {:mvn/version "1.2.603"}
-           metosin/jsonista {:mvn/version "0.2.7"}
            ch.qos.logback/logback-classic {:mvn/version "1.2.3"}
+           throttler/throttler {:mvn/version "1.0.0"}
+           camel-snake-kebab/camel-snake-kebab {:mvn/version "0.4.1" :exclusions [com.fasterxml.jackson.core/jackson-core]}
            org.postgresql/postgresql {:mvn/version "42.2.16"}
-           com.novemberain/langohr {:mvn/version "5.2.0"}
-           aero                      {:mvn/version "1.1.6"}}
+           com.novemberain/langohr {:mvn/version "5.2.0" :exclusions [com.fasterxml.jackson.core/jackson-core]}
+           aero/aero                      {:mvn/version "1.1.6"}}
  :aliases {:dev       {:extra-paths ["dev"]
                        :jvm-opts    ["-Dtrace" "-Ddenom.band=100"]
                        :extra-deps  {org.clojure/tools.namespace         {:mvn/version "1.0.0"}
                                      clj-commons/pushy                   {:mvn/version "0.3.10"}
                                      binaryage/devtools                  {:mvn/version "1.0.0"}
                                      integrant/repl                      {:mvn/version "0.3.1"}}}
-           :prod {:extra-paths ["prod"]}
            :test      {:extra-paths ["test"]
                        :extra-deps  {com.cognitect/test-runner {:git/url "https://github.com/cognitect-labs/test-runner.git"
                                                                 :sha     "209b64504cb3bd3b99ecfec7937b358a879f55c1"}}}
+           :alljar {:extra-deps {seancorfield/depstar {:mvn/version "1.1.104"}}
+                    :exec-fn hf.depstar.uberjar/run
+                    :exec-args {:jar "BroadCast.jar"
+                                :aot true
+                                :main-class erl.broadcast.core}}
            :run-tests {:main-opts ["-m" "cognitect.test-runner"]}}}
